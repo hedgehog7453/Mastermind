@@ -26,21 +26,21 @@ int main(int argc, char** argv) {
 	}
 	fclose(f);
 
-	int sockfd, portno, clilen;
-	struct sockaddr_in serv_addr, cli_addr;
-	char* code = NULL;
-
+	// Check the number of arguments
 	if (argc < 2) {
-		printf("ERROR, no port provided\n");
+		printf("Not enough arguments!\n");
 		exit(1);
 	}
 
 	// Record the secret code if specified
+	char* code = NULL;
 	if (argc==3) {
 		code = malloc((CODE_LEN+1)*sizeof(char));
 		strcat(code, argv[2]);
 	}
 
+	int sockfd, portno, clilen;
+	struct sockaddr_in serv_addr, cli_addr;
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0))<0) {
 		perror("ERROR opening socket");
 		exit(1);

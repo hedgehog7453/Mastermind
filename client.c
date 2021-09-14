@@ -18,34 +18,38 @@ int main(int argc, char** argv) {
 	// Catch and handle ctrl-C
 	signal(SIGINT, signal_handler);
 
-	if (argc<3) {
-		fprintf(stderr, "IP and port number not specified\n");
+	if (argc < 3) {
+		fprintf(stderr, "Not enough arguments provided!\n");
 		exit(0);
 	}
 
+	// Get the server
 	server = gethostbyname(argv[1]);
-	if (server==NULL) {
+	if (server == NULL) {
 		fprintf(stderr, "ERROR no such host\n");
 		exit(0);
 	}
-
 	bzero((char*)&serv_addr, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
-	bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, 
-		server->h_length);
+	bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
+	
+	// Get the port number
 	portno = atoi(argv[2]);
 	serv_addr.sin_port = htons(portno);
-
+	
+	// Open the socket
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0))<0) {
 		perror("ERROR opening socket");
 		exit(0);
 	}
 	
+	// Connect to the server
 	if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
 		perror("ERROR connecting");
 		exit(0);
 	}
 
+	// All set, game starts!
 	gamePlay(sockfd);
 	
 	return 0;
@@ -53,27 +57,32 @@ int main(int argc, char** argv) {
 
 
 void gamePlay(int sockfd) {
+	// Allocate memory for strings
 	char* guessInput = malloc((CODE_LEN+2)*sizeof(char));
 	char* guess = malloc((CODE_LEN+1)*sizeof(char));
 	char* feedback = malloc((FEEDBACK_LEN+1)*sizeof(char));
-	int game_finished, n;
+	// a boolean value stating the status of the game
+	int game_finished; // 1 if game is finished
+	// an int for receiving results
+	int n; 
 
+	// Get feedback from the server
 	bzero(feedback, FEEDBACK_LEN+1);
-	if ((n=recv(sockfd, feedback, FEEDBACK_LEN+1, 0))<0) {
+	if ((n=recv(sockfd, feedback, FEEDBACK_LEN+1, 0)) < 0) {
 		perror("ERROR reading from socket");
 		exit(0);
 	}
 	printf("%s\n", feedback);
 	bzero(guess, CODE_LEN+1);
-
-	// Repeat until server send a Game-finished flag to client
+	// Repeat until server send a Game-finished flag to the client
 	while (fgets(guessInput, CODE_LEN+2, stdin)) {
-
+		
 		if (!validate(guessInput)) {
 			printf("Please Enter 4 alphabets. Try again: \n");
 			continue;
 		}
 
+		// bzero(guess, CODE_LEN+1);
 		int i;
 		for (i=0; i<CODE_LEN; i++) {
 			guess[i] = guessInput[i];
@@ -94,7 +103,7 @@ void gamePlay(int sockfd) {
 		printf("%s\n", feedback);
 
 		bzero(&game_finished, sizeof(game_finished));
-		if ((n=recv(sockfd, &game_finished, sizeof(game_finished), 0))<0) {
+		if ((n = recv(sockfd, &game_finished, sizeof(game_finished), 0))<0) {
 			perror("ERROR reading from socket");
 			exit(0);
 		}
@@ -111,8 +120,8 @@ void gamePlay(int sockfd) {
 }
 
 /* 
- * Send a 3-alphabet to server to notify the termination of client. This method
- * bases two assumptions: 
+ * Send a 3-alphabet to server to notify the termination of client.
+ * This method bases on two assumptions: 
  * 1. Ctrl-C can only be pressed while waiting for user input
  * 2. The player will only enter a 4-alphabet combination
  */
