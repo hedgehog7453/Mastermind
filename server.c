@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
 	// Create log file if it does not exist, or clear the file if already exists
 	FILE *f = fopen("log.txt", "w+");
 	if (f == NULL) {
-    	printf("Error opening file\n");
-    	exit(1);
+		printf("Error opening file\n");
+		exit(1);
 	}
 	fclose(f);
 
@@ -39,9 +39,10 @@ int main(int argc, char** argv) {
 		strcat(code, argv[2]);
 	}
 
-	int sockfd, portno, clilen;
+	int sockfd, portno;
+	unsigned int clilen;
 	struct sockaddr_in serv_addr, cli_addr;
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0))<0) {
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("ERROR opening socket");
 		exit(1);
 	}
@@ -66,11 +67,11 @@ int main(int argc, char** argv) {
 
 	// Initialize sockfd_status
 	// (used for tracking status of 20 spots for sockfds)
-	for (i=0; i<NUM_SOCKETS; i++) {
+	for (i = 0; i < NUM_SOCKETS; i++) {
 		newsockfd[i] = 0;
 	}
 	
-	while (n=accept(sockfd, (struct sockaddr*)&cli_addr, &clilen)) {
+	while ((n=accept(sockfd, (struct sockaddr*)&cli_addr, &clilen))) {
 		if (n<0) {
 			perror("ERROR on accept");
 			exit(1);
@@ -85,9 +86,9 @@ int main(int argc, char** argv) {
 			args->inputcode = code;
 			args->cli_ip = getIP(cli_addr);
 
-			if(pthread_create(&thread_id[index],NULL,gamePlay,(void*)args)<0) {
+			if (pthread_create(&thread_id[index], NULL, gamePlay, (void*)args)<0) {
 				perror("ERROR on creating thread");
-            	exit(1);
+				exit(1);
 			}
 		}
 	}
@@ -96,12 +97,11 @@ int main(int argc, char** argv) {
 }
 
 void* gamePlay(void* args) {
+
 	int counter = 0; 
 	int gameFinished = FALSE;
 	int n; 
 
-	char* guess = malloc((CODE_LEN+1)*sizeof(char));
-	char* feedback = malloc((FEEDBACK_LEN+1)*sizeof(char));
 	char* code = NULL;
 	char* file_entry = malloc((ENTRY_LEN+1)*sizeof(char));
 
@@ -119,36 +119,35 @@ void* gamePlay(void* args) {
 
 	// Write entry to file
 	bzero(file_entry, ENTRY_LEN+1);
-	sprintf(file_entry, "(%s)(soc_id %d) client connected\n", 
-		((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
+	sprintf(file_entry, "(%s)(soc_id %d) client connected\n", ((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
 	writetofile(file_entry);
 
 	// Write entry to file
 	bzero(file_entry, ENTRY_LEN+1);
-	sprintf(file_entry, "(0.0.0.0)(soc_id %d) server's secret=%s\n", 
-		((args_t*)args)->sockfd, code);
+	sprintf(file_entry, "(0.0.0.0)(soc_id %d) server's secret=%s\n", ((args_t*)args)->sockfd, code);
 	writetofile(file_entry);
 
 	// Send a welcome message to client
-	char* welcomeMessage = "Welcome to game MasterMind.\nEnter a code \
-(combination of 4 alphabets from {A,B,C,D,E,F}):";
-	if ((n=send(((args_t*)args)->sockfd,welcomeMessage,FEEDBACK_LEN+1,0))<0) {
+	char* welcomeMessage = "Welcome to game MasterMind.\nEnter a code (combination of 4 alphabets from {A,B,C,D,E,F}):";
+	if ((n=send(((args_t*)args)->sockfd, welcomeMessage, FEEDBACK_LEN+1, 0)) < 0) {
 		perror("ERROR writing to socket");
 		exit(1);
 	}
 
+	char* guess = malloc((CODE_LEN+1)*sizeof(char));
+	char* feedback = malloc((FEEDBACK_LEN+1)*sizeof(char));
+
 	// Loop until game is over
-	while(1) {
+	while (1) {
 		bzero(guess, CODE_LEN+1);
 		if ((n = recv(((args_t*)args)->sockfd, guess, CODE_LEN+1, 0))<0) {
 			perror("ERROR reading from socket");
 			exit(1);
 		}
-		if (guess[3]=='\0') {
+		if (guess[3] == '\0') {
 			// Write entry to file
 			bzero(file_entry, ENTRY_LEN+1);
-			sprintf(file_entry, "(%s)(soc_id %d) client terminated\n", 
-				((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
+			sprintf(file_entry, "(%s)(soc_id %d) client terminated\n", ((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
 			writetofile(file_entry);
 
 			free(guess);
@@ -160,13 +159,12 @@ void* gamePlay(void* args) {
 			pthread_exit(NULL);
 			return NULL;
 		}
-
+		printf("%d\n", counter);
 		counter++;
 
 		// Write entry to file
 		bzero(file_entry, ENTRY_LEN+1);
-		sprintf(file_entry, "(%s)(soc_id %d) client's guess=%s\n", 
-			((args_t*)args)->cli_ip, ((args_t*)args)->sockfd, guess);
+		sprintf(file_entry, "(%s)(soc_id %d) client's guess=%s\n", ((args_t*)args)->cli_ip, ((args_t*)args)->sockfd, guess);
 		writetofile(file_entry);
 
 		// Generate feedback
@@ -174,7 +172,7 @@ void* gamePlay(void* args) {
 		bzero(feedback, FEEDBACK_LEN+1);
 		char* status = malloc((STATUS_LEN+1)*sizeof(char));
 		bzero(status, STATUS_LEN+1);
-		if (validity==INVALID) {
+		if (validity == INVALID) {
 			sprintf(feedback, "INVALID. Enter a code: ");
 			sprintf(status, "INVALID");
 			counter--;
@@ -188,16 +186,14 @@ void* gamePlay(void* args) {
 			strcpy(status, feedback);
 			status[5]='\0';
 		} else {
-			sprintf(feedback, 
-				"FAILURE. Correct code is %s.\nThanks for playing", code);
+			sprintf(feedback, "FAILURE. Correct code is %s.\nThanks for playing", code);
 			sprintf(status, "FAILURE");
 			gameFinished = TRUE;
 		}
 
 		// Write entry to file
 		bzero(file_entry, ENTRY_LEN+1);
-		sprintf(file_entry, "(0.0.0.0)(soc_id %d) server's response=%s\n", 
-			((args_t*)args)->sockfd, status);
+		sprintf(file_entry, "(0.0.0.0)(soc_id %d) server's response=%s\n", ((args_t*)args)->sockfd, status);
 		writetofile(file_entry);
 		free(status);
 
@@ -206,6 +202,8 @@ void* gamePlay(void* args) {
 			perror("ERROR writing to socket");
 			exit(1);
 		}
+
+		
 
 		// Generate a flag indicating whether the game will finish at this round
 		int msg = FALSE;
@@ -219,18 +217,17 @@ void* gamePlay(void* args) {
 			// Write entry to file
 			bzero(file_entry, ENTRY_LEN+1);
 			if (validity==SUCCESS) {
-				sprintf(file_entry, "(%s)(soc_id %d) SUCCESS game over\n", 
-					((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
+				sprintf(file_entry, "(%s)(soc_id %d) SUCCESS game over\n", ((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
 				num_success_clients++;
 			} else {
-				sprintf(file_entry, "(%s)(soc_id %d) FAILURE game over\n", 
-					((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
+				sprintf(file_entry, "(%s)(soc_id %d) FAILURE game over\n", ((args_t*)args)->cli_ip, ((args_t*)args)->sockfd);
 			}
 			writetofile(file_entry);
 
 			free(guess);
 			free(feedback);
 			free(code);
+
 			close(((args_t*)args)->sockfd);
 			removeSock(((args_t*)args)->sockfd);
 
@@ -238,6 +235,10 @@ void* gamePlay(void* args) {
 			return NULL;
 		}
 
+
+		// free(guess);
+		// free(feedback);
+		// free(code);
 		// Send the flag to client
 		if ((n=send(((args_t*)args)->sockfd, &msg, sizeof(msg), 0))<0) {
 			perror("ERROR writing to socket");
@@ -367,8 +368,8 @@ void writetofile(char* content) {
 	pthread_mutex_lock(&lock);
 	FILE *f = fopen("log.txt", "a");
 	if (f == NULL) {
-    	printf("Error opening file\n");
-    	exit(1);
+		printf("Error opening file\n");
+		exit(1);
 	}
 
 	char* time_string = getTime();
@@ -387,8 +388,8 @@ void signal_handler() {
 
 	FILE *f = fopen("log.txt", "a");
 	if (f == NULL) {
-    	printf("Error opening file\n");
-    	exit(1);
+		printf("Error opening file\n");
+		exit(1);
 	}
 
 	fprintf(f, "Number of clients connected = %d\n", num_clients);
@@ -401,7 +402,7 @@ void signal_handler() {
 	utimeval = usage.ru_utime;
 	ktimeval = usage.ru_stime;
 	fprintf(f, "Memory usage = %ld kb\n", usage.ru_maxrss);
-	fprintf(f, "User timeval = %ld ms, Kernel timeval = %ld ms\n", 
+	fprintf(f, "User timeval = %d ms, Kernel timeval = %d ms\n", 
 		utimeval.tv_usec, ktimeval.tv_usec);
 
 	char* time_string = getTime();
